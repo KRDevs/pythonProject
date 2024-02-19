@@ -1,26 +1,49 @@
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser,UserManager
 from django.core.validators import RegexValidator
 from django.db import models
-
-MALE, FEMALE = ("male", "female")
+import random
+from datetime import datetime,timedelta
 
 
 class UserRoleChoice(models.TextChoices):
-    ORDINARY_USER = "ordinary_user"
-    MANAGER = "manager"
-    SUPER_ADMIN = "super_admin"
+    ORDINARY_USER = "ORDINARY_USER"
+    MANAGER = "MANAGER"
+    SUPER_ADMIN = "SUPER_ADMIN"
 
 
 class AuthTypeChoice(models.TextChoices):
-    VIA_EMAIL = "via_email"
-    VIA_PHONE = "via_phone"
-    VIA_USERNAME = "via_username"
+    VIA_EMAIL = "VIA_EMAIL"
+    VIA_PHONE = "VIA_PHONE"
+    VIA_USERNAME = "VIA_USERNAME"
 
 
 class SexChoice(models.TextChoices):
-    MALE = "male"
-    FEMALE = "female"
+    MALE = "MALE"
+    FEMALE = "FEMALE"
+class TypeChoice(models.TextChoices):
+    VIA_EMAIL = "VIA_EMAIL"
+    VIA_PHONE = "VIA_PHONE"
 
+phoneExpire=2
+emailExpire=5
+
+class UserConfirmation(models.Model):
+    code=models.CharField(max_length=4)
+    user=models.ForeignKey('users.User',on_delete=models.CASCADE)
+    verifyType=models.CharField(max_length=31,choices=TypeChoice.choices,null=True)
+    expirationTime=models.DateTimeField(null=True)
+    isConfirmed=models.BooleanField(default=False)
+
+    def __str__(self):
+        return str(self.user.__str__())
+
+    def save(self,*args,**kwargs):
+        if not self.pk:
+            if self.verifyType==VIA_EMAIL:
+                self.expirationTime=datetime.now()+timedelta(minutes=emailExpire)
+            else:
+                self.expirationTime=datetime.now()+timedelta(minutes=phoneExpire)
+        super(UserConfirmation,self).save(*args,**kwargs)
 
 class User(AbstractUser):
     _validate_phone = RegexValidator(
@@ -36,3 +59,19 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+    objects=UserManager()
+
+    @property
+    def full_name(self):
+        return f'{self.first_name} {self.last_name}'
+
+    def create_verify_code(self,verify_type):
+        code="".join([str(random.randint(0,100)%10) for _ in range(4)])
+        UserConfirmation.objects.create(
+            user_id=self.id,
+            verifyType=verifyType,
+            code=code
+            )
+        return code
+
