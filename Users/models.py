@@ -1,6 +1,8 @@
 from django.contrib.auth.models import AbstractUser,UserManager
 from django.core.validators import RegexValidator
 from django.db import models
+from shared.models import BaseModel
+
 import random
 from datetime import datetime,timedelta
 
@@ -20,17 +22,23 @@ class AuthTypeChoice(models.TextChoices):
 class SexChoice(models.TextChoices):
     MALE = "MALE"
     FEMALE = "FEMALE"
-class TypeChoice(models.TextChoices):
+class AuthTypeChoice(models.TextChoices):
     VIA_EMAIL = "VIA_EMAIL"
     VIA_PHONE = "VIA_PHONE"
+class AuthStatusChoice(models.TextChoices):
+    NEW="NEW"
+    CODE_VERIFIED="CODE_VERIFIED"
+    INFORMATION_FILLED="INFORMATION_FILLED"
+    DONE="DONE"
 
 phoneExpire=2
 emailExpire=5
 
 class UserConfirmation(models.Model):
     code=models.CharField(max_length=4)
-    user=models.ForeignKey('users.User',on_delete=models.CASCADE)
-    verifyType=models.CharField(max_length=31,choices=TypeChoice.choices,null=True)
+    user=models.ForeignKey('Users.User',on_delete=models.CASCADE)
+    verifyType=models.CharField(max_length=31,choices=AuthTypeChoice.choices,null=True)
+    authStatus=models.CharField(max_length=31,choices=AuthStatusChoice.choices,default=NEW,null=True)
     expirationTime=models.DateTimeField(null=True)
     isConfirmed=models.BooleanField(default=False)
 
@@ -45,7 +53,7 @@ class UserConfirmation(models.Model):
                 self.expirationTime=datetime.now()+timedelta(minutes=phoneExpire)
         super(UserConfirmation,self).save(*args,**kwargs)
 
-class User(AbstractUser):
+class User(AbstractUser,BaseModel):
     _validate_phone = RegexValidator(
         regex=r"^998[0-9]{9}$",
         message="O'zbekiston raqamini kiriting! M-n:998975132525"
